@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { makeImagePath } from "../utils";
 import { useState } from "react";
 import useWindowDimensions from "./useWidowDimensions";
+import { useHistory, useRouteMatch } from "react-router-dom";
 
 const Wrapper = styled(motion.div)`
   background-color: black;
@@ -61,6 +62,7 @@ const Box = styled(motion.div)<{ $bgPhoto: string }>`
   background-position: center center;
   color: red;
   font-size: 30px;
+  cursor: pointer;
   &:first-child {
     transform-origin: center left;
   }
@@ -81,6 +83,48 @@ const Info = styled(motion.div)`
     text-align: center;
     font-size: 18px;
   }
+`;
+
+const Overlay = styled(motion.div)`
+  position: fixed;
+  width: 100%;
+  height: 100vh;
+  top: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+`;
+
+const BigMovie = styled(motion.div)`
+  position: fixed;
+  width: 70vw;
+  height: 80vh;
+  background-color: ${(props) => props.theme.black.lighter};
+  top: 100px;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  border-radius: 15px;
+  overflow: hidden;
+`;
+const Bigimg = styled.div`
+  width: 100%;
+  height: 500px;
+  background-position: center center;
+  background-size: cover;
+`;
+
+const BigTitle = styled.h2`
+  color: ${(props) => props.theme.white.lighter};
+  padding-left: 20px;
+  position: relative;
+  top: -60px;
+  font-size: 40px;
+`;
+
+const BigOverView = styled.p`
+  position: relative;
+  padding-left: 20px;
+  color: ${(props) => props.theme.white.lighter};
 `;
 
 const infoVariants = {
@@ -112,6 +156,8 @@ const BoxVariants = {
 };
 
 function Home() {
+  const history = useHistory();
+  const bigMovieMatch = useRouteMatch<{ movieId: string }>("/movies/:movieId");
   const width = useWindowDimensions();
   const { data, isLoading } = useQuery<IGetMoviesResult>(
     ["movies", "nowPlaying"],
@@ -129,6 +175,13 @@ function Home() {
     }
   };
   const toggleLeaving = () => setLeaving((prev) => !prev);
+  const onBoxClicked = (movieId: number) => {
+    history.push(`/movies/${movieId}`);
+  };
+  const onOverlayClick = () => history.goBack();
+  const clickedMovie =
+    bigMovieMatch?.params.movieId &&
+    data?.results.find((movie) => movie.id === +bigMovieMatch.params.movieId);
   return (
     <Wrapper>
       {isLoading ? (
@@ -156,6 +209,8 @@ function Home() {
                   .slice(offset * index, offset * index + offset)
                   .map((movie) => (
                     <Box
+                      layoutId={movie.id + ""}
+                      onClick={() => onBoxClicked(movie.id)}
                       variants={BoxVariants}
                       whileHover="hover"
                       initial="normal"
@@ -171,6 +226,33 @@ function Home() {
               </Row>
             </AnimatePresence>
           </Slider>
+          <AnimatePresence>
+            {bigMovieMatch ? (
+              <>
+                <Overlay
+                  onClick={onOverlayClick}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                />
+                <BigMovie layoutId={bigMovieMatch.params.movieId}>
+                  {clickedMovie && (
+                    <>
+                      <Bigimg
+                        style={{
+                          backgroundImage: `linear-gradient(to top, black, transparent), url(${makeImagePath(
+                            clickedMovie.backdrop_path,
+                            "w500"
+                          )})`,
+                        }}
+                      />
+                      <BigTitle>{clickedMovie.title}</BigTitle>
+                      <BigOverView>{clickedMovie.overview}</BigOverView>
+                    </>
+                  )}
+                </BigMovie>
+              </>
+            ) : null}
+          </AnimatePresence>
         </>
       )}
     </Wrapper>
